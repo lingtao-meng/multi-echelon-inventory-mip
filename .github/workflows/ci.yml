@@ -31,3 +31,12 @@ jobs:
           test -f results/summary.md
           test -f results/policy_comparison.csv
           test -f images/network_map.png
+
+      - name: Stochastic network design
+        run: python scripts/stochastic.py --scenarios 4 --capacity-scales 1.0,0.35
+
+      - name: Check stochastic outputs
+        run: |
+          test -f results/stochastic_summary.csv
+          test -f results/stochastic_scenarios.csv
+          test -f images/stochastic.png

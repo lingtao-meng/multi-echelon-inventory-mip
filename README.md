@@ -115,13 +115,50 @@ EOQ 里 `Q = √(2DS/h)` 对需求是非线性的，一旦需求变成决策变�
 
 ---
 
+## 随机需求：VSS 与 EVPI
+
+前面的 MILP 用**平均需求**做决策。但开仓和"谁服务谁"必须在需求揭晓前定下来，而需求会波动。
+把模型扩展成两阶段随机规划：
+
+- **第一阶段**：开哪些仓 `y`、谁服务谁 `x`（需求未知时决定）；
+- **第二阶段**：每个情景下的安全库存（需求已知后调整）；
+- **10 个均值保持情景**：每个需求区的期望乘数严格等于 1，所以"平均需求"就是情景的期望；
+- **软产能**：超出铭牌产能按 $5/件计加班/应急成本，所有策略在同一成本口径下比较。
+
+三个对照策略：确定性（按平均需求优化）、随机（最小化期望成本）、鲁棒（最小化最坏情景成本）。
+两个标准指标：
+
+- **VSS** = 确定性策略的期望成本 − 随机策略的期望成本（忽略不确定性的代价）
+- **EVPI** = 随机策略期望成本 − 完美信息成本（更好的需求信息值多少钱）
+
+![stochastic](images/stochastic.png)
+
+| 铭牌产能 | 确定性期望 | 随机期望 | 鲁棒期望 | 完美信息 | VSS | EVPI |
+|---|---|---|---|---|---|---|
+| 100% | $4.454M | $4.454M | $4.490M | $4.445M | $0 (0.00%) | $8,585 (0.19%) |
+| 50% | $4.473M | $4.473M | $4.498M | $4.450M | $0 (0.00%) | $22,362 (0.50%) |
+| **35%** | **$4.764M** | **$4.727M** | **$4.727M** | $4.672M | **$36,529 (0.77%)** | **$55,493 (1.16%)** |
+
+读法：
+
+- **产能宽松时，平均需求解本身就是随机最优**（VSS=0）：不确定性主要影响安全库存（EVPI $8.6K），
+  不影响"开几个仓"。
+- **产能收紧到 35% 时，容量约束开始起作用**：随机解和确定性解开同样 6 个仓，但重新分配了 3 个需求区
+  （英国从直发改走鹿特丹、意大利从鹿特丹改走拉各斯、西班牙从鹿特丹改为直发），VSS = **0.77%**。
+- **EVPI = 1.16%**：更好的需求预测一年值 $55K；这是"预测投入"的上限，不是拍脑袋的 ROI。
+
+> 这张表也修正了上一版的局限 5：基准算例的产能确实过宽，把容量压到 35% 才能看到容量与不确定性的交互。
+
+---
+
 ## 局限（先说清楚，比被问出来好）
 
 1. **需求独立同分布**：没有考虑品类之间的相关性，也没有考虑区域仓之间的横向调拨（transshipment）。
 2. **安全库存用 CV 比例近似**：对高单价慢动品，绝对波动水平比 CV 更重要，这里会低估安全库存。
 3. **单期静态模型**：没有建模建仓的投资分期、关仓的沉没成本。
 4. **距离 = 大圆距离**：没有路网、没有关税、没有海运航线约束。
-5. **容量约束没起作用**：本算例的吞吐能力远大于实际流量（可自行把 `capacity` 调小观察）。
+5. **基准算例的容量约束不起作用**：吞吐能力远大于实际流量；随机分析里把产能压到 35% 才让容量约束生效
+   （见上一节），真实的容量参数需要仓储调研数据。
 
 ---
 
@@ -136,11 +173,17 @@ python scripts/solve.py
 # 换参数
 python scripts/solve.py --service-level 0.99 --fixed-mult 1.5
 
+# 随机需求：VSS / EVPI / 鲁棒对照（约 8 秒）
+python scripts/stochastic.py
+python scripts/stochastic.py --scenarios 12 --sigma 0.4 --capacity-scales 1.0,0.5,0.35
+
 # 重新生成算例（需要 DataCo 原始 CSV）
 python data/build_instance.py --dataco ../data/DataCoSupplyChainDataset.csv
 ```
 
-输出：`results/summary.md`、`results/policy_comparison.csv`、`results/network_solution.csv`、`results/sensitivity.csv`、`images/network_map.png`。
+输出：`results/summary.md`、`results/policy_comparison.csv`、`results/network_solution.csv`、
+`results/sensitivity.csv`、`results/stochastic_summary.csv`、`results/stochastic_scenarios.csv`、
+`results/stochastic_solutions.csv`、`images/network_map.png`、`images/stochastic.png`。
 
 ---
 
@@ -151,9 +194,12 @@ data/build_instance.py    从 DataCo 生成算例（含地理坐标与成本参�
 data/instance.json        已生成的算例（CI 用它，不需要原始 CSV）
 src/instance.py           算例加载 + 大圆距离
 src/model.py              MILP 建模（PuLP）+ 成本评估
+src/stochastic.py         两阶段随机规划 + VSS/EVPI + 鲁棒对照
 src/baselines.py          现状（单中心直发）与"全开就近"两个基线
 scripts/solve.py          求解 + 对比 + 灵敏度 + 地图 + 报告
+scripts/stochastic.py     随机需求分析 + 情景表 + 图表
 tests/test_model.py       单元测试（可行性、下界、容量、直发选项）
+tests/test_stochastic.py  情景均值保持、VSS/EVPI 非负、鲁棒最坏情况
 ```
 
 ---

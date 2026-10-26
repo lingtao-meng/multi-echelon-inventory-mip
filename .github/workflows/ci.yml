@@ -40,3 +40,23 @@ jobs:
           test -f results/stochastic_summary.csv
           test -f results/stochastic_scenarios.csv
           test -f images/stochastic.png
+
+  inventory:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install inventory dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas numpy scipy matplotlib
+
+      - name: Inventory tests
+        working-directory: inventory
+        run: |
+          python tests/test_demand_classification.py
+          python tests/test_inventory_budget.py

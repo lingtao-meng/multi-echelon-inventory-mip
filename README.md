@@ -6,6 +6,13 @@
 
 **一句话结论**：在基准参数下，优化器从 8 个候选仓里选出 **5 个**，年化成本比「单中心直发」低 **32.1%**，比「8 个仓全开」低 **17.5%**——而且「全开」只比现状好 17.7%，说明**多开仓不是免费的好事**。
 
+这个仓库现在分两层：
+
+- **网络层**（根目录）：8 个候选仓、20 个需求区，决定开几个仓、开在哪、谁服务谁；后面补了两阶段随机规划和 VSS/EVPI。
+- **SKU 层**（`inventory/`）：Superstore 200 个 SKU 的 ABC、EOQ、安全库存，以及 ADI/CV² 分类和预算约束分配。
+
+网络层回答“仓怎么布”，SKU 层回答“每个 SKU 备多少”，合起来才是一套库存决策。
+
 ![network](images/network_map.png)
 
 ---
@@ -160,6 +167,18 @@ EOQ 里 `Q = √(2DS/h)` 对需求是非线性的，一旦需求变成决策变�
 
 ---
 
+## SKU 库存模块
+
+`inventory/` 是同一主题下的 SKU 层：200 个 Superstore SKU，先用 ADI/CV² 看需求类型，再在安全库存预算约束下分配服务水平。
+
+- 需求分类：84.1% intermittent、15.9% lumpy，默认方法应该是 Croston/SBA，不是指数平滑
+- 预算 $49,832：ABC 填充率 99.756%，统一 z 99.870%，边际优化 99.897%
+- 预算越紧，优化越值钱：25% 预算时，统一 z 95.52%，边际优化 96.43%
+
+详细结果和复现见 [`inventory/README.md`](inventory/README.md)。
+
+---
+
 ## 运行
 
 ```bash
@@ -177,6 +196,15 @@ python scripts/stochastic.py --scenarios 12 --sigma 0.4 --capacity-scales 1.0,0.
 
 # 重新生成算例（需要 DataCo 原始 CSV）
 python data/build_instance.py --dataco ../data/DataCoSupplyChainDataset.csv
+
+# SKU 库存模块
+cd inventory
+pip install -r requirements.txt
+python python/demand_classification.py
+python python/inventory_budget.py
+python tests/test_demand_classification.py
+python tests/test_inventory_budget.py
+cd ..
 ```
 
 输出：`results/summary.md`、`results/policy_comparison.csv`、`results/network_solution.csv`、
@@ -187,6 +215,8 @@ python data/build_instance.py --dataco ../data/DataCoSupplyChainDataset.csv
 
 ## 项目结构
 
+```
+inventory/                SKU 库存模块（ABC/EOQ/安全库存 + 预算分配）
 ```
 data/build_instance.py    从 DataCo 生成算例（含地理坐标与成本参数）
 data/instance.json        已生成的算例（CI 用它，不需要原始 CSV）

@@ -1,3 +1,5 @@
+> 这个仓库已经归档，内容并入了 [supply-chain-inventory-analysis/network_mip](https://github.com/lingtao-meng/supply-chain-inventory-analysis/tree/main/network_mip)。后续优化在那边做。
+
 # 两级库存网络优化（MILP）
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/) [![CI](https://github.com/lingtao-meng/multi-echelon-inventory-mip/actions/workflows/ci.yml/badge.svg)](https://github.com/lingtao-meng/multi-echelon-inventory-mip/actions/workflows/ci.yml)
